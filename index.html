@@ -457,7 +457,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>MeshCore Key Generator</h1>
+            <h1>MeshCore Key Generator for NSW</h1>
             <p>Generate custom Ed25519 keys for MeshCore</p>
         </div>
 
@@ -527,16 +527,30 @@
 
             <form id="keygenForm">
                 <div class="form-group">
-                    <label for="targetPrefix">Target Prefix (Hex):</label>
+                    <label for="targetPrefix">Target Prefix (Hex) <span style="font-weight: normal; font-size: 0.9em; color: #7f8c8d;">(Optional with NSW check)</span>:</label>
                     <input type="text" id="targetPrefix" class="hex-input" 
-                           placeholder="Enter hex prefix (e.g., F8, F8A1, FFF, etc.)" 
+                           placeholder="Enter hex prefix (e.g., F8, F8A1) or leave empty with NSW check" 
                            maxlength="8" pattern="[0-9A-Fa-f]+">
                     <small style="color: #7f8c8d; margin-top: 5px; display: block;">
-                        Enter any hex prefix (1-8 characters). Longer prefixes take longer to find.
+                        Enter any hex prefix (1-8 characters). Longer prefixes take longer to find. Leave empty with NSW check for auto-selection.
                     </small>
                     <div id="prefixInfo" style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea; display: none;">
                         <div style="font-weight: 600; color: #2c3e50; margin-bottom: 5px;">📊 Difficulty Estimate</div>
                         <div id="prefixDifficulty" style="font-size: 14px; color: #34495e;"></div>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 20px;">
+                    <label style="display: flex; align-items: center; cursor: pointer; user-select: none;">
+                        <input type="checkbox" id="avoidNSWRepeaters" style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer;">
+                        <span>Avoid NSW Repeater Prefixes</span>
+                    </label>
+                    <small style="color: #7f8c8d; margin-top: 5px; display: block; margin-left: 30px;">
+                        Check this to ensure your repeater key doesn't conflict with the list of <a href="http://nswmesh.au/docs/meshcore/repeater_list.html">existing NSW mesh repeaters</a>. If no prefix is entered, an available one will be auto-selected.
+                    </small>
+                    <div id="nswRepeaterInfo" style="margin-top: 10px; margin-left: 30px; padding: 10px; background: #e8f4fd; border-radius: 8px; border-left: 4px solid #2980b9; display: none;">
+                        <div style="font-weight: 600; color: #2c3e50; margin-bottom: 5px;">NSW Repeater Check</div>
+                        <div id="nswRepeaterStatus" style="font-size: 14px; color: #34495e;">Loading repeater data...</div>
                     </div>
                 </div>
 
@@ -602,14 +616,14 @@
     </div>
 
     <!-- Floating Info Button -->
-    <a href="./instructions" class="floating-info" title="View detailed instructions">
+    <!-- <a href="./instructions" class="floating-info" title="View detailed instructions">
         📋
-    </a>
+    </a> -->
 
     <!-- Footer -->
     <div class="footer">
         <a href="https://github.com/agessaman/meshcore-web-keygen" target="_blank" rel="noopener">
-            📦 View on GitHub
+            📦 View original project on GitHub
         </a>
     </div>
 
@@ -902,7 +916,7 @@
 
 
             // Generate keys until we find a match
-            async generateVanityKey(targetPrefix, prefixLength) {
+            async generateVanityKey(targetPrefix, prefixLength, avoidPrefixes = []) {
                 this.isRunning = true;
                 this.attempts = 0;
                 this.startTime = Date.now();
@@ -921,7 +935,8 @@
 
                     // Update progress text
                     const progressText = document.getElementById('progressText');
-                    progressText.textContent = `${this.attempts.toLocaleString()} attempts | ${Math.round(rate).toLocaleString()} keys/sec | ${elapsed.toFixed(1)}s elapsed`;
+                    const avoidText = avoidPrefixes.length > 0 ? ` (avoiding ${avoidPrefixes.length} NSW repeater prefixes)` : '';
+                    progressText.textContent = `${this.attempts.toLocaleString()} attempts | ${Math.round(rate).toLocaleString()} keys/sec | ${elapsed.toFixed(1)}s elapsed${avoidText}`;
 
                     // Estimate progress based on probability
                     const probability = 1 / Math.pow(16, prefixLength);
@@ -948,6 +963,22 @@
                             console.log(`Target prefix: ${targetPrefix}`);
                             console.log(`First ${targetPrefix.length} chars: ${publicKeyHex.substring(0, targetPrefix.length)}`);
                             console.log(`Match: ${this.checkPrefix(publicKeyHex, targetPrefix)}`);
+                            if (avoidPrefixes.length > 0) {
+                                const keyPrefix = publicKeyHex.substring(0, 2).toUpperCase();
+                                console.log(`NSW check - Key prefix: ${keyPrefix}, Avoiding: ${avoidPrefixes.includes(keyPrefix)}`);
+                            }
+                        }
+
+                        // If avoiding NSW repeaters, check if this key conflicts
+                        if (avoidPrefixes.length > 0) {
+                            const keyPrefix = publicKeyHex.substring(0, 2).toUpperCase();
+                            if (avoidPrefixes.includes(keyPrefix)) {
+                                // Skip this key as it conflicts with NSW repeaters
+                                if (this.attempts % 1000 === 0) {
+                                    await new Promise(resolve => setTimeout(resolve, 0));
+                                }
+                                continue;
+                            }
                         }
 
                         // Check if it matches our target prefix
@@ -1003,9 +1034,16 @@
         // Global key generator instance
         const keyGenerator = new MeshCoreKeyGenerator();
 
+        // NSW Repeater data
+        let nswRepeaterPrefixes = [];
+        let nswRepeaterDataLoaded = false;
+
         // DOM elements
         const form = document.getElementById('keygenForm');
         const targetPrefixInput = document.getElementById('targetPrefix');
+        const avoidNSWRepeatersCheckbox = document.getElementById('avoidNSWRepeaters');
+        const nswRepeaterInfo = document.getElementById('nswRepeaterInfo');
+        const nswRepeaterStatus = document.getElementById('nswRepeaterStatus');
         const generateBtn = document.getElementById('generateBtn');
         const stopBtn = document.getElementById('stopBtn');
         const progressContainer = document.getElementById('progressContainer');
@@ -1015,6 +1053,38 @@
         const importInfoBtn = document.getElementById('importInfoBtn');
         const importModal = document.getElementById('importModal');
         const closeModal = document.getElementById('closeModal');
+
+        // Fetch NSW Repeater prefixes
+        async function fetchNSWRepeaterPrefixes() {
+            try {
+                const URL = 'https://raw.githubusercontent.com/nswmesh/nswmesh_wiki/refs/heads/main/docs/meshcore/repeater_list.md';
+                const res = await fetch(URL);
+                if (!res.ok) throw new Error(`Failed to fetch: ${res.statusText}`);
+                const markdown = await res.text();
+                
+                // Extract table from MD
+                const lines = markdown.split('\n').filter((line) => line.trim().startsWith('|') && line.includes('|'));
+                
+                const prefixes = new Array();
+                lines.forEach(line => {
+                    const lineParts = line.split('|');
+                    const longestPart = lineParts.reduce((a,b) => { return a.length > b.length ? a : b; }).trim();
+                    
+                    // Skip header rows
+                    if (longestPart.length >= 2 && longestPart !== 'public_key_prefix' && !longestPart.includes('-')) {
+                        const prefix = longestPart.substring(0, 2).toUpperCase();
+                        prefixes.push(prefix);
+                    }
+                });
+                
+                nswRepeaterPrefixes = prefixes.sort();
+                nswRepeaterDataLoaded = true;
+                return true;
+            } catch (error) {
+                console.error('Failed to fetch NSW repeater data:', error);
+                return false;
+            }
+        }
 
         // Calculate and display difficulty estimate
         function updateDifficultyEstimate(prefix) {
@@ -1107,8 +1177,47 @@
             if (/^[0-9A-F]*$/.test(prefix)) {
                 updateDifficultyEstimate(prefix);
                 checkReservedPrefix(prefix);
+                checkNSWRepeaterConflict(prefix);
             }
         });
+
+        // Show/hide NSW repeater info when checkbox is toggled
+        avoidNSWRepeatersCheckbox.addEventListener('change', async (e) => {
+            if (e.target.checked) {
+                nswRepeaterInfo.style.display = 'block';
+                if (!nswRepeaterDataLoaded) {
+                    nswRepeaterStatus.innerHTML = 'Loading NSW repeater data...';
+                    const success = await fetchNSWRepeaterPrefixes();
+                    if (success) {
+                        nswRepeaterStatus.innerHTML = `Loaded ${nswRepeaterPrefixes.length} NSW repeater prefixes to avoid. ${256 - nswRepeaterPrefixes.length} unique prefixes remaning.`;
+                        checkNSWRepeaterConflict(targetPrefixInput.value.trim().toUpperCase());
+                    } else {
+                        nswRepeaterStatus.innerHTML = 'Failed to load NSW repeater data. Will proceed without checking.';
+                    }
+                } else {
+                    nswRepeaterStatus.innerHTML = `Loaded ${nswRepeaterPrefixes.length} NSW repeater prefixes to avoid. ${256 - nswRepeaterPrefixes.length} unique prefixes remaning.`;
+                    checkNSWRepeaterConflict(targetPrefixInput.value.trim().toUpperCase());
+                }
+            } else {
+                nswRepeaterInfo.style.display = 'none';
+            }
+        });
+
+        // Check if prefix conflicts with NSW repeaters
+        function checkNSWRepeaterConflict(prefix) {
+            if (!avoidNSWRepeatersCheckbox.checked || !nswRepeaterDataLoaded || prefix.length < 2) {
+                return;
+            }
+            
+            const firstTwoChars = prefix.substring(0, 2).toUpperCase();
+            if (nswRepeaterPrefixes.includes(firstTwoChars)) {
+                nswRepeaterStatus.innerHTML = `Warning: Prefix "${firstTwoChars}" conflicts with an existing NSW repeater`;
+                nswRepeaterStatus.style.color = '#e74c3c';
+            } else {
+                nswRepeaterStatus.innerHTML = `Prefix "${firstTwoChars}" is available (no NSW repeater conflicts)`;
+                nswRepeaterStatus.style.color = '#27ae60';
+            }
+        }
 
         // Check for reserved prefixes and show warning
         function checkReservedPrefix(prefix) {
@@ -1142,11 +1251,53 @@
                 return;
             }
 
-            const targetPrefix = targetPrefixInput.value.trim().toUpperCase();
+            let targetPrefix = targetPrefixInput.value.trim().toUpperCase();
+
+            // Special handling when "Avoid NSW Repeater Prefixes" is checked
+            if (avoidNSWRepeatersCheckbox.checked) {
+                // Load NSW repeater data if not already loaded
+                if (!nswRepeaterDataLoaded) {
+                    hideError();
+                    progressContainer.style.display = 'block';
+                    document.getElementById('progressText').textContent = 'Loading NSW repeater data...';
+                    generateBtn.disabled = true;
+                    
+                    const success = await fetchNSWRepeaterPrefixes();
+                    if (!success) {
+                        showError('Failed to load NSW repeater data. Please try again or uncheck "Avoid NSW Repeater Prefixes".');
+                        progressContainer.style.display = 'none';
+                        generateBtn.disabled = false;
+                        return;
+                    }
+                    progressContainer.style.display = 'none';
+                }
+
+                // If no target prefix specified, find an available one
+                if (!targetPrefix) {
+                    // Generate all possible 2-character hex prefixes
+                    const allPrefixes = [];
+                    for (let i = 0; i < 256; i++) {
+                        allPrefixes.push(i.toString(16).toUpperCase().padStart(2, '0'));
+                    }
+                    
+                    // Filter out NSW repeater prefixes
+                    const availablePrefixes = allPrefixes.filter(p => !nswRepeaterPrefixes.includes(p));
+                    
+                    if (availablePrefixes.length === 0) {
+                        showError('All prefixes are taken by NSW repeaters!');
+                        return;
+                    }
+                    
+                    // Pick a random available prefix
+                    targetPrefix = availablePrefixes[Math.floor(Math.random() * availablePrefixes.length)];
+                    targetPrefixInput.value = targetPrefix;
+                    console.log(`Auto-selected available prefix: ${targetPrefix} (${availablePrefixes.length} available prefixes)`);
+                }
+            }
 
             // Validation
             if (!targetPrefix) {
-                showError('Please enter a target prefix.');
+                showError('Please enter a target prefix or check "Avoid NSW Repeater Prefixes" to auto-select an available one.');
                 return;
             }
 
@@ -1177,7 +1328,25 @@
                 document.getElementById('progressText').textContent = 'Loading Ed25519 library...';
                 await keyGenerator.initialize();
                 
-                const result = await keyGenerator.generateVanityKey(targetPrefix, targetPrefix.length);
+                // Check if we need to load NSW repeater data
+                let avoidPrefixes = [];
+                if (avoidNSWRepeatersCheckbox.checked) {
+                    if (!nswRepeaterDataLoaded) {
+                        document.getElementById('progressText').textContent = 'Loading NSW repeater data...';
+                        const success = await fetchNSWRepeaterPrefixes();
+                        if (success) {
+                            avoidPrefixes = nswRepeaterPrefixes;
+                            console.log(`Avoiding ${avoidPrefixes.length} NSW repeater prefixes:`, avoidPrefixes);
+                        } else {
+                            showError('Failed to load NSW repeater data. Proceeding without NSW repeater check.');
+                        }
+                    } else {
+                        avoidPrefixes = nswRepeaterPrefixes;
+                        console.log(`Avoiding ${avoidPrefixes.length} NSW repeater prefixes:`, avoidPrefixes);
+                    }
+                }
+                
+                const result = await keyGenerator.generateVanityKey(targetPrefix, targetPrefix.length, avoidPrefixes);
                 
                 if (result) {
                     displayResult(result, targetPrefix);

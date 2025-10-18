@@ -1,0 +1,16 @@
+{
+  "name": "meshcore-web-keygen",
+  "version": "1.0.0",
+  "description": "A web application that generates Ed25519 keys compatible with MeshCore. Runs entirely in your browser.",
+  "main": "githubList.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "fetch": "^1.1.0",
+    "node": "^25.0.0",
+    "node-fetch": "^3.3.2"
+  }
+}
