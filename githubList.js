@@ -37,20 +37,11 @@ async function getRepeaterPrefixes() {
   
   return prefixes.sort();
 }
-
-// Export for use in browser (via script tag or module)
-if (typeof window !== 'undefined') {
-  window.getRepeaterPrefixes = getRepeaterPrefixes;
-}
-
-// Test when run directly
-if (import.meta.url === `file://${process.argv[1]}`) {
   (async () => {
     const lines = await readTable();
     console.log('All keys:', lines);
     console.log('\nRepeater prefixes:', await getRepeaterPrefixes());
   })();
-}
 
-// Export for Node.js
+
 export { readTable, getRepeaterPrefixes };

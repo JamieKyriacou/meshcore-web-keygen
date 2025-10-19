@@ -16,7 +16,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #c8d3ff 0%, #ffffdd 100%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -104,7 +104,12 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #8bea66 0%, #108b2f 100%);
+            color: white;
+        }
+
+        .json-btn {
+            background: linear-gradient(135deg, #191452 0%, #362aa4 100%);
             color: white;
         }
 
@@ -410,19 +415,19 @@
         .footer {
             text-align: center;
             padding: 20px;
-            color: rgba(255, 255, 255, 0.7);
+            color: rgba(0, 0, 0, 0);
             font-size: 14px;
             margin-top: 40px;
         }
 
         .footer a {
-            color: rgba(255, 255, 255, 0.8);
+            color: rgba(0, 0, 0, 0.8);
             text-decoration: none;
             transition: color 0.3s ease;
         }
 
         .footer a:hover {
-            color: white;
+            color: rgb(130, 130, 130);
             text-decoration: underline;
         }
 
@@ -458,18 +463,17 @@
     <div class="container">
         <div class="header">
             <h1>MeshCore Key Generator for NSW</h1>
-            <p>Generate custom Ed25519 keys for MeshCore</p>
+            <p>Generate custom Ed25519 keys for MeshCore against the NSW list</p>
         </div>
 
         <div class="content">
             <div class="info">
                 <h4>About MeshCore Keys</h4>
                 <ul>
-                    <li>Meshcore uses the first two characters of your public key as a node identifier. It is helpful to be able to select your node id to avoid collisions with neighbors.</li>
+                    <li>Meshcore uses the first two characters of your public key as a node identifier. It is helpful to be able to select your node id to avoid collisions with neighbors if you are building a repeater.</li>
                     <li>This key generator does all processing in your browser - keys never leave your device</li>
                 </ul>
             </div>
-
 
             <!-- Import Instructions Modal -->
             <div id="importModal" class="modal" style="display: none;">
@@ -527,20 +531,8 @@
 
             <form id="keygenForm">
                 <div class="form-group">
-                    <label for="targetPrefix">Target Prefix (Hex) <span style="font-weight: normal; font-size: 0.9em; color: #7f8c8d;">(Optional with NSW check)</span>:</label>
-                    <input type="text" id="targetPrefix" class="hex-input" 
-                           placeholder="Enter hex prefix (e.g., F8, F8A1) or leave empty with NSW check" 
-                           maxlength="8" pattern="[0-9A-Fa-f]+">
-                    <small style="color: #7f8c8d; margin-top: 5px; display: block;">
-                        Enter any hex prefix (1-8 characters). Longer prefixes take longer to find. Leave empty with NSW check for auto-selection.
-                    </small>
-                    <div id="prefixInfo" style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea; display: none;">
-                        <div style="font-weight: 600; color: #2c3e50; margin-bottom: 5px;">📊 Difficulty Estimate</div>
-                        <div id="prefixDifficulty" style="font-size: 14px; color: #34495e;"></div>
-                    </div>
-                </div>
 
-                <div class="form-group" style="margin-top: 20px;">
+                    <div class="form-group" style="margin-top: 20px;">
                     <label style="display: flex; align-items: center; cursor: pointer; user-select: none;">
                         <input type="checkbox" id="avoidNSWRepeaters" style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer;">
                         <span>Avoid NSW Repeater Prefixes</span>
@@ -553,6 +545,22 @@
                         <div id="nswRepeaterStatus" style="font-size: 14px; color: #34495e;">Loading repeater data...</div>
                     </div>
                 </div>
+
+                <div class="form-group">
+                    <label for="targetPrefix" id="targetPrefixLabel">Target Prefix (Hex):</label>
+                    <input type="text" id="targetPrefix" class="hex-input" 
+                           placeholder="Enter hex prefix (e.g., F8, F8A1)" 
+                           maxlength="8" pattern="[0-9A-Fa-f]+">
+                    <small style="color: #7f8c8d; margin-top: 5px; display: block;" id="targetPrefixHelp">
+                        Enter any hex prefix (1-8 characters). Longer prefixes take longer to find.
+                    </small>
+                    <div id="prefixInfo" style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea; display: none;">
+                        <div style="font-weight: 600; color: #2c3e50; margin-bottom: 5px;">📊 Difficulty Estimate</div>
+                        <div id="prefixDifficulty" style="font-size: 14px; color: #34495e;"></div>
+                    </div>
+                </div>
+
+                
 
                 <div class="button-group">
                     <button type="submit" class="btn btn-primary" id="generateBtn">
@@ -604,12 +612,22 @@
                 </div>
 
                 <div class="button-group" style="margin-top: 20px;">
-                    <button type="button" class="btn btn-primary" id="downloadBtn">
+                    <button type="button" class="btn btn-primary" id="sendToDeviceBtn" style="background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);">
+                        Send to Device
+                    </button>
+                    <button type="button" class="btn json-btn" id="downloadBtn">
                         Download JSON
                     </button>
-                    <button type="button" class="btn btn-secondary" id="importInfoBtn">
+                    <!-- <button type="button" class="btn btn-secondary" id="importInfoBtn">
                         📋 How to Import Keys
-                    </button>
+                    </button> -->
+                </div>
+
+                <!-- Web Serial Status Display -->
+                <div id="serialStatus" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #3498db; display: none;">
+                    <div style="font-weight: 600; color: #2c3e50; margin-bottom: 8px;">📡 Serial Connection Status</div>
+                    <div id="serialStatusText" style="font-size: 14px; color: #34495e;">Ready to connect...</div>
+                    <div id="serialLog" style="margin-top: 10px; padding: 10px; background: #2c3e50; color: #2ecc71; border-radius: 5px; font-family: 'Courier New', monospace; font-size: 12px; max-height: 200px; overflow-y: auto; display: none; white-space: pre-wrap; word-wrap: break-word;"></div>
                 </div>
             </div>
         </div>
@@ -622,6 +640,10 @@
 
     <!-- Footer -->
     <div class="footer">
+        <a href="https://github.com/nswmesh/nswmesh_wiki" target="_blank" rel="noopener">
+            📦 View modified project on GitHub
+        </a>
+        <a>  |  </a>
         <a href="https://github.com/agessaman/meshcore-web-keygen" target="_blank" rel="noopener">
             📦 View original project on GitHub
         </a>
@@ -1050,9 +1072,13 @@
         const resultContainer = document.getElementById('resultContainer');
         const errorContainer = document.getElementById('errorContainer');
         const downloadBtn = document.getElementById('downloadBtn');
+        const sendToDeviceBtn = document.getElementById('sendToDeviceBtn');
         const importInfoBtn = document.getElementById('importInfoBtn');
         const importModal = document.getElementById('importModal');
         const closeModal = document.getElementById('closeModal');
+        const serialStatus = document.getElementById('serialStatus');
+        const serialStatusText = document.getElementById('serialStatusText');
+        const serialLog = document.getElementById('serialLog');
 
         // Fetch NSW Repeater prefixes
         async function fetchNSWRepeaterPrefixes() {
@@ -1181,8 +1207,27 @@
             }
         });
 
+        // Update target prefix label based on checkbox state
+        function updatePrefixLabel() {
+            const targetPrefixLabel = document.getElementById('targetPrefixLabel');
+            const targetPrefixHelp = document.getElementById('targetPrefixHelp');
+            const targetPrefixInput = document.getElementById('targetPrefix');
+            
+            if (avoidNSWRepeatersCheckbox.checked) {
+                targetPrefixLabel.textContent = 'Optional: Target Prefix (Hex)';
+                targetPrefixInput.placeholder = 'Enter hex prefix (e.g., F8, F8A1) or leave empty for auto-selection';
+                targetPrefixHelp.textContent = 'Enter any hex prefix (1-8 characters). Longer prefixes take longer to find. Leave empty for auto-selection of available prefix.';
+            } else {
+                targetPrefixLabel.textContent = 'Target Prefix (Hex):';
+                targetPrefixInput.placeholder = 'Enter hex prefix (e.g., F8, F8A1)';
+                targetPrefixHelp.textContent = 'Enter any hex prefix (1-8 characters). Longer prefixes take longer to find.';
+            }
+        }
+
         // Show/hide NSW repeater info when checkbox is toggled
         avoidNSWRepeatersCheckbox.addEventListener('change', async (e) => {
+            updatePrefixLabel(); // Update label text
+            
             if (e.target.checked) {
                 nswRepeaterInfo.style.display = 'block';
                 if (!nswRepeaterDataLoaded) {
@@ -1402,6 +1447,163 @@
             URL.revokeObjectURL(url);
         });
 
+        // Send to Device button Web Serial API
+        sendToDeviceBtn.addEventListener('click', async () => {
+            // Get the private key from the UI (already in hex format)
+            const privateKey = document.getElementById('privateKey').textContent.trim();
+            
+            // Validate that we have a hex private key
+            if (!privateKey || privateKey.length !== 128) {
+                alert('Invalid private key. Please generate a key first.');
+                return;
+            }
+            
+            // Show serial status display
+            serialStatus.style.display = 'block';
+            serialStatusText.textContent = 'Connecting to device...';
+            serialLog.style.display = 'none';
+            serialLog.innerHTML = '';
+            
+            // Helper function to update status
+            function updateSerialStatus(message, isError = false) {
+                serialStatusText.textContent = message;
+                serialStatusText.style.color = isError ? '#e74c3c' : '#34495e';
+            }
+            
+            // Helper function to log output
+            function logSerialOutput(message) {
+                serialLog.style.display = 'block';
+                const timestamp = new Date().toLocaleTimeString();
+                serialLog.innerHTML += `[${timestamp}] ${message}\n`;
+                serialLog.scrollTop = serialLog.scrollHeight;
+            }
+            
+            let port = null;
+            
+            try {
+                // Check if Web Serial API is supported
+                if (!("serial" in navigator)) {
+                    throw new Error('Unsupported browser. Try using Chrome, Edge or Opera.');
+                }
+
+                // Request port access
+                logSerialOutput('Requesting serial port access...');
+                updateSerialStatus('Please select your device...');
+                port = await navigator.serial.requestPort();
+                
+                // Open port at 115200 baud. Default for meshcore
+                logSerialOutput('Opening port at 115200 baud...');
+                updateSerialStatus('Opening connection...');
+                
+                try {
+                    await port.open({ baudRate: 115200 });
+                } catch (openError) {
+                    if (openError.message.includes('already open')) {
+                        logSerialOutput('Port already open, attempting to use existing connection');
+                    } else {
+                        throw openError;
+                    }
+                }
+                
+                updateSerialStatus('Successfully connected to device');
+                logSerialOutput('Port opened successfully');
+
+                // Write the command first using a simple encoder
+                const encoder = new TextEncoder();
+                const writer = port.writable.getWriter();
+                
+                // Send with \r\n line ending 
+                const command = `set prv.key ${privateKey}\r\n`;
+                
+                // Write the command
+                await writer.write(encoder.encode(command));
+                
+                // Release the writer to flush the data
+                writer.releaseLock();
+                
+                logSerialOutput('Command sent successfully!');
+                updateSerialStatus('Private key sent to device');
+
+                // Longer delay to let device process and respond
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                // Now read the response
+                const decoder = new TextDecoder();
+                const reader = port.readable.getReader();
+                
+                logSerialOutput('Reading device response...');
+                
+                let responseReceived = false;
+                
+                // Set timeout to stop reading after 5 seconds
+                const readTimeout = setTimeout(() => {
+                    try {
+                        reader.cancel();
+                    } catch (e) {
+                        // Ignore cancellation errors
+                    }
+                }, 3000);
+
+                try {
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) {
+                            break;
+                        }
+                        if (value) {
+                            const text = decoder.decode(value);
+                            if (text.trim()) {
+                                logSerialOutput(`Device: ${text.trim()}`);
+                                responseReceived = true;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    // Reader was cancelled or error occurred
+                    if (e.message && !e.message.includes('cancel')) {
+                        logSerialOutput(`Read error: ${e.message}`);
+                    }
+                }
+                
+                clearTimeout(readTimeout);
+                
+                // Release the reader
+                try {
+                    reader.releaseLock();
+                } catch (e) {
+                    // Already released
+                }
+
+                // Close the port
+                await port.close();
+                logSerialOutput('Port closed');
+                updateSerialStatus('Complete! Key sent successfully');
+                
+            } catch (error) {
+                if (error.name === 'NotFoundError') {
+                    updateSerialStatus('No device selected', true);
+                    logSerialOutput('Error: No device selected');
+                } else if (error.message && error.message.includes('open serial port')) {
+                    updateSerialStatus('Port in use - close other serial connections', true);
+                    logSerialOutput('Error: Port is in use by another application');
+                    logSerialOutput('Close Meshcore Terminal, Meshcore Repeater Setup, or any other serial monitors and try again');
+                } else {
+                    updateSerialStatus(`Error: ${error.message}`, true);
+                    logSerialOutput(`Error: ${error.message}`);
+                }
+                console.error('Serial error:', error);
+                
+                // Try to close port if it was opened
+                if (port) {
+                    try {
+                        await port.close();
+                    } catch (closeError) {
+                        // Ignore close errors
+                    }
+                }
+            }
+        });
+
 
 
         function displayResult(result, targetPrefix) {
@@ -1488,6 +1690,7 @@
         }
 
         // Initialize the form
+        updatePrefixLabel(); // Set initial label text based on checkbox state
         targetPrefixInput.focus();
     </script>
 </body>
